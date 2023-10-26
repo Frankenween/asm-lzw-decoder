@@ -142,9 +142,10 @@ int main() {
     addTest("3");
     addTest("4");
 
-    //addRunner("v0", decoderBasic);
-    //addRunner("v1", decoder1);
+    addRunner("v0", decoderBasic);
+    addRunner("v1", decoder1);
     addRunner("v1 fast read", decoder2);
+    addRunner("v2", decoder3);
 
     auto result = run_all(runners, tests);
 

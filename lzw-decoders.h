@@ -10,4 +10,6 @@ size_t decoder1(const uint8_t *src, size_t n, uint8_t *out, size_t outLen);
 
 size_t decoder2(const uint8_t *src, size_t n, uint8_t *out, size_t outLen);
 
+size_t decoder3(const uint8_t *src, size_t n, uint8_t *out, size_t outLen);
+
 #endif //LZW_TIFF_DECODER_LZW_DECODERS_H
