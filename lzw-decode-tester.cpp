@@ -135,17 +135,22 @@ int main() {
     addTest("empty");
     addTest("new-line");
     addTest("single-char");
-    addTest("big-pnm");
-    addTest("shell32.dll");
     addTest("1");
     addTest("2");
     addTest("3");
     addTest("4");
+    addTest("big-pnm");
+    addTest("shell32.dll");
+    addTest("big-a");
 
     addRunner("v0", decoderBasic);
-    addRunner("v1", decoder1);
-    addRunner("v1 fast read", decoder2);
-    addRunner("v2", decoder3);
+//    addRunner("v1", decoder1);
+//    addRunner("v1 fast read", decoder2);
+//    addRunner("v2", decoder3);
+//    addRunner("v2 new bitlen", decoder4);
+    addRunner("v3 pull -1", decoder5);
+    addRunner("v4 expand loop", decoder6);
+    addRunner("v5 no clean", decoder7);
 
     auto result = run_all(runners, tests);
 
