@@ -1,3 +1,14 @@
+/// Test empty:            136200
+/// Test new-line:          37315
+/// Test single-char:       37157
+/// Test 1:               2568183
+/// Test 2:                 52172
+/// Test 3:                 39926
+/// Test 4:               1022652
+/// Test big-pnm:      3025497732
+/// Test shell32.dll:   388916552
+/// Test big-a:         132449848
+
 #include "lzw-decoders.h"
 
 char globalDict[DICT_LENGTH][DICT_LENGTH];

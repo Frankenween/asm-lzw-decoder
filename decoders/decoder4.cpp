@@ -1,3 +1,14 @@
+/// Test empty:             23517
+/// Test new-line:          14975
+/// Test single-char:       15397
+/// Test 1:                433279
+/// Test 2:                 18240
+/// Test 3:                 14635
+/// Test 4:                367490
+/// Test big-pnm:       841778903
+/// Test shell32.dll:   112078635
+/// Test big-a:           8488690
+
 #include "lzw-decoders.h"
 #include <algorithm>
 

@@ -11,13 +11,13 @@ constexpr uint16_t EOI_CODE   = 257;
 
 #define newDecoder(x) size_t decoder##x(const uint8_t *src, size_t n, uint8_t *out, size_t outLen)
 
-newDecoder(Basic);
-newDecoder(1);
-newDecoder(2);
-newDecoder(3);
-newDecoder(4);
-newDecoder(5);
-newDecoder(6);
+//newDecoder(Basic);
+//newDecoder(1);
+//newDecoder(2);
+//newDecoder(3);
+//newDecoder(4);
+//newDecoder(5);
+//newDecoder(6);
 newDecoder(7);
 
 #endif //LZW_TIFF_DECODER_LZW_DECODERS_H
