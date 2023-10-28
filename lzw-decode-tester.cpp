@@ -2,7 +2,7 @@
 #include <iostream>
 #include <vector>
 #include <functional>
-#include "lzw-decoders.h"
+#include "decoders/lzw-decoders.h"
 
 using namespace std;
 

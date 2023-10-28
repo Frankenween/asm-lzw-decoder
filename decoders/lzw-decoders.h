@@ -4,6 +4,11 @@
 #include <cstdint>
 using std::size_t;
 
+constexpr size_t DICT_LENGTH  = 4096;
+constexpr uint16_t CLEAR_CODE = 256;
+constexpr uint16_t EOI_CODE   = 257;
+
+
 #define newDecoder(x) size_t decoder##x(const uint8_t *src, size_t n, uint8_t *out, size_t outLen)
 
 newDecoder(Basic);
