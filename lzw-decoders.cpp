@@ -22,6 +22,8 @@ static uint16_t readCode1(const uint8_t *data, size_t bitsRead, int codeLen) {
 
 static uint16_t readCodeFast(const uint8_t *data, size_t bitsRead, int codeLen) {
     size_t needBytes = (bitsRead + codeLen) / 8 - bitsRead / 8 + 1; // 2 or 3
+    // TODO: try splitting on two cases
+    // TODO: or BMI check
     size_t pos = bitsRead / 8;
     uint32_t result = 0;
     result |= data[pos] << (8 * (needBytes - 1));
@@ -685,8 +687,11 @@ size_t decoder6(const uint8_t *src, size_t n, uint8_t *out, size_t outLen) {
 /// no cleanup
 size_t decoder7(const uint8_t *src, size_t n, uint8_t *out, size_t outLen) {
     size_t prefixStart[DICT_LENGTH]; // first string char in output
+    // TODO: keep smaller relative addresses
     size_t entryLengths[DICT_LENGTH];
+    // TODO: reduce to uint16_t / uint32_t
     uint8_t lastSymbol[DICT_LENGTH]; // last symbol of entry
+    // TODO: remove lastSymbol
     // init dict
     for (int i = 0; i < DICT_LENGTH; i++) {
         entryLengths[i] = 0;
@@ -720,6 +725,7 @@ size_t decoder7(const uint8_t *src, size_t n, uint8_t *out, size_t outLen) {
             }
             oldCode = cntCode;
         } else if (cntCode > 257) {
+            // TODO: add old code check here
             if (cntCode < newCode) {
                 // met this entry
                 size_t iterations = min(entryLengths[cntCode], outLen - outputIndex) - 1;
@@ -728,6 +734,7 @@ size_t decoder7(const uint8_t *src, size_t n, uint8_t *out, size_t outLen) {
                 uint8_t *baseRead = out + prefixStart[cntCode];
                 fastCopy(baseRead, baseWrite, iterations);
 
+                // TODO: remove me
                 if (outputIndex + iterations < outLen) { // not boundary
                     out[outputIndex + iterations] = lastSymbol[cntCode];
                     iterations++;
@@ -752,6 +759,7 @@ size_t decoder7(const uint8_t *src, size_t n, uint8_t *out, size_t outLen) {
                 uint8_t *baseWrite = out + outputIndex;
                 uint8_t *baseRead = out + prefixStart[newCode];
                 fastCopy(baseRead, baseWrite, iterations);
+                // TODO: remove me
                 if (outputIndex + iterations < outLen) {
                     out[outputIndex + iterations] = lastSymbol[newCode];
                     iterations++;

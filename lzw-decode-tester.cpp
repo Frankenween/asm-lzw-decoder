@@ -144,10 +144,10 @@ int main() {
     addTest("big-a");
 
     addRunner("v0", decoderBasic);
-//    addRunner("v1", decoder1);
-//    addRunner("v1 fast read", decoder2);
-//    addRunner("v2", decoder3);
-//    addRunner("v2 new bitlen", decoder4);
+    addRunner("v1", decoder1);
+    addRunner("v1 fast read", decoder2);
+    addRunner("v2", decoder3);
+    addRunner("v2 new bitlen", decoder4);
     addRunner("v3 pull -1", decoder5);
     addRunner("v4 expand loop", decoder6);
     addRunner("v5 no clean", decoder7);
@@ -155,7 +155,7 @@ int main() {
     auto result = run_all(runners, tests);
 
     for (int i = 0; i < runners.size(); i++) {
-        cout << "Runner " << runnerNames[i] << ":\n";
+        cout << "Runner " << runnerNames[i] << ":" << endl;
         for (int j = 0; j < tests.size(); j++) {
 
             cout << "    Test " << testNames[j] << ": ";
@@ -164,7 +164,7 @@ int main() {
             } else {
                 cout << result[i][j];
             }
-            cout << "\n";
+            cout << endl;
         }
     }
 }
