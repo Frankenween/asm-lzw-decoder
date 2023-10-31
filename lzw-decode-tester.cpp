@@ -6,12 +6,15 @@
 
 using namespace std;
 
-static __inline__ uint64_t rdtscp() {
+using lzw_decoder = size_t(*)(const uint8_t*, size_t, uint8_t*, size_t);
+
+//typedef size_t(*lzw_decoder)(const uint8_t*, size_t, uint8_t*, size_t);
+
+static inline uint64_t rdtscp() {
     uint32_t hi, lo;
-    __asm__ __volatile__ ("rdtscp" : "=a"(lo), "=d"(hi));
+    __asm__ __volatile__ ("rdtscp" : "=a"(lo), "=d"(hi) : : "ecx");
     return ((uint64_t)lo) | (((uint64_t)hi) << 32);
 }
-
 
 struct test {
     test(const string &inputName, const string &outputName) {
@@ -31,17 +34,22 @@ struct test {
 
     }
 
-    [[nodiscard]] const vector<uint8_t>& getEncodedData() const {
-        return data;
+    [[nodiscard]] const uint8_t* getEncodedData() const {
+        return data.data();
+    }
+
+    [[nodiscard]] size_t getEncodedSize() const {
+        return data.size();
     }
 
     [[nodiscard]] bool checkDecodedData(const vector<uint8_t> &result, bool verbose = true) const {
         for (size_t i = 0; i < min(answer.size(), result.size()); i++) {
             if (result[i] != answer[i]) {
                 if (verbose) {
-                    cerr << "Difference 1.in byte " << i << endl;
+                    cerr << "Difference in byte " << i << endl;
                     cerr << "Expected: " << hex << static_cast<uint32_t>(answer[i]) << endl;
                     cerr << "Got: " << hex << static_cast<uint32_t>(result[i]) << endl;
+                    cerr << dec;
                 }
                 return false;
             }
@@ -66,28 +74,29 @@ private:
 
 };
 
-using lzw_decoder = size_t(*)(const uint8_t*, size_t, uint8_t*, size_t);
-
 // Get time(in some way) or -1, if test failed
-uint64_t run_test(lzw_decoder decoder, const test &cntTest) {
+uint64_t run_test(lzw_decoder dec, const test &cntTest) {
     size_t ansLen = cntTest.getAnswerLen();
     // Add one guard element to detect overflow
     vector<uint8_t> outputData(ansLen + 1);
 
     uint64_t t1 = rdtscp();
-    size_t wrote = decoder(cntTest.getEncodedData().data(), cntTest.getEncodedData().size(),
+    size_t wrote = dec(cntTest.getEncodedData(), cntTest.getEncodedSize(),
                            outputData.data(), outputData.size());
     uint64_t t2 = rdtscp();
 
+    if (wrote == static_cast<size_t>(-1)) {
+        return -1;
+    }
     outputData.resize(wrote);
-    if (cntTest.checkDecodedData(outputData)) {
+    if (cntTest.checkDecodedData(outputData, true)) {
         return t2 - t1;
     } else {
         return static_cast<uint64_t>(-1);
     }
 }
 
-vector<vector<uint64_t>> run_all(const vector<lzw_decoder> &runners, const vector<test> &tests, uint64_t samples = 10) {
+vector<vector<uint64_t>> run_all(const vector<lzw_decoder> &runners, const vector<test> &tests, uint64_t samples = 7) {
     vector<vector<uint64_t>> results;
     int i = 0;
     for (auto runner : runners) {
@@ -97,7 +106,9 @@ vector<vector<uint64_t>> run_all(const vector<lzw_decoder> &runners, const vecto
         int j = 0;
         for (auto &t : tests) {
             j++;
-            cerr << "Test " << j << " started with " << samples << " samples" << endl;
+            for (int warmup = 0; warmup < 2; warmup++) {
+                run_test(runner, t);
+            }
             uint64_t sum = 0;
             for (int run = 0; run < samples; run++) {
                 auto res = run_test(runner, t);
@@ -143,14 +154,13 @@ int main() {
     addTest("shell32.dll");
     addTest("big-a");
 
-//    addRunner("v0", decoderBasic);
-//    addRunner("v1", decoder1);
-//    addRunner("v1 fast read", decoder2);
-//    addRunner("v2", decoder3);
-//    addRunner("v2 new bitlen", decoder4);
-//    addRunner("v3 pull -1", decoder5);
-//    addRunner("v4 expand loop", decoder6);
-    addRunner("v5 no clean", decoder7);
+//    addRunner("basic", decoderBasic);
+//    addRunner("reuse entry", decoder1);
+//    addRunner("fast code recieve", decoder2);
+//    addRunner("if reorder", decoder3);
+//    addRunner("fast clz", decoder4);
+    addRunner("remove lastSymbol", decoder8);
+    addRunner("split read", decoderSplitReceive);
 
     auto result = run_all(runners, tests);
 
@@ -159,7 +169,7 @@ int main() {
         for (int j = 0; j < tests.size(); j++) {
 
             cout << "    Test " << testNames[j] << ": ";
-            if (result[i][j] == ~0) {
+            if (result[i][j] == static_cast<uint64_t>(-1)) {
                 cout << "failed";
             } else {
                 cout << result[i][j];

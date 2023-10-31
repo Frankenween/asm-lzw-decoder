@@ -1,17 +1,13 @@
-/// Test empty:            136200
-/// Test new-line:          37315
-/// Test single-char:       37157
-/// Test 1:               2568183
-/// Test 2:                 52172
-/// Test 3:                 39926
-/// Test 4:               1022652
-/// Test big-pnm:      3025497732
-/// Test shell32.dll:   388916552
-/// Test big-a:         132449848
+#include <iostream>
 
-#include "lzw-decoders.h"
+using std::size_t;
 
-char globalDict[DICT_LENGTH][DICT_LENGTH];
+constexpr size_t DICT_LENGTH  = 4096;
+constexpr uint16_t CLEAR_CODE = 256;
+constexpr uint16_t EOI_CODE   = 257;
+
+
+static uint8_t globalDict[DICT_LENGTH][DICT_LENGTH];
 
 // slow read code
 static inline uint16_t readCode1(const uint8_t *data, size_t bitsRead, int codeLen) {
@@ -30,12 +26,13 @@ static inline uint8_t getBitLen(uint16_t code) {
 
 /// Basic stupid decoder
 size_t decoderBasic(const uint8_t *src, size_t n, uint8_t *out, size_t outLen) {
+    //printf("enter %p, %zu, %p, %zu\n", src, n, out, outLen);
     int entryLengths[DICT_LENGTH];
     // init dict
     for (int i = 0; i < DICT_LENGTH; i++) {
         entryLengths[i] = 0;
         if (i < 256) {
-            globalDict[i][0] = static_cast<char>(i);
+            globalDict[i][0] = static_cast<uint8_t>(i);
             entryLengths[i] = 1;
         }
     }
@@ -45,7 +42,8 @@ size_t decoderBasic(const uint8_t *src, size_t n, uint8_t *out, size_t outLen) {
     int codeLen = 9;
     size_t bitsRead = 0;
 
-    uint16_t cntCode, oldCode = -1;
+    uint16_t cntCode = 0;
+    auto oldCode = static_cast<uint16_t>(-1);
     while ((bitsRead + codeLen) < n * 8 && outputIndex < outLen) {
         cntCode = readCode1(src, bitsRead, codeLen);
         bitsRead += codeLen;
@@ -53,7 +51,7 @@ size_t decoderBasic(const uint8_t *src, size_t n, uint8_t *out, size_t outLen) {
             for (int i = 0; i < DICT_LENGTH; i++) {
                 entryLengths[i] = 0;
                 if (i < 256) {
-                    globalDict[i][0] = static_cast<char>(i);
+                    globalDict[i][0] = static_cast<uint8_t>(i);
                     entryLengths[i] = 1;
                 }
             }
@@ -61,6 +59,7 @@ size_t decoderBasic(const uint8_t *src, size_t n, uint8_t *out, size_t outLen) {
             oldCode = -1;
             newCode = 258;
         } else if (cntCode == EOI_CODE) {
+            //printf("EOI\n");
             done = true;
             break;
         } else {
@@ -98,7 +97,9 @@ size_t decoderBasic(const uint8_t *src, size_t n, uint8_t *out, size_t outLen) {
         }
     }
     if (!done) {
+        //printf("ret -1\n");
         return -1;
     }
+    //printf("ret %zu\n", outputIndex);
     return outputIndex;
 }

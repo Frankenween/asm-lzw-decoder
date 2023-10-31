@@ -7,9 +7,12 @@ static inline uint16_t readCodeFast(const uint8_t *data, size_t bitsRead, int co
     // TODO: or BMI check
     size_t pos = bitsRead / 8;
     uint32_t result = 0;
-    result |= data[pos] << (8 * (needBytes - 1));
-    result |= data[pos + 1] << (8 * (needBytes - 2));
-    if (needBytes == 3) { // try optimize
+    if (needBytes == 2) {
+        result |= data[pos] << 8;
+        result |= data[pos + 1];
+    } else {
+        result |= data[pos] << 16;
+        result |= data[pos + 1] << 8;
         result |= data[pos + 2];
     }
     size_t lowTrashBits = 8 * needBytes - (bitsRead & 7) - codeLen;
@@ -18,22 +21,15 @@ static inline uint16_t readCodeFast(const uint8_t *data, size_t bitsRead, int co
     return result;
 }
 
-static inline uint8_t getBitLen(uint16_t code) {
-    return 32 - __builtin_clz(static_cast<uint32_t>(code));
-}
-
-/// If reorder
-/// In-if optimizations
-size_t decoder3(const uint8_t *src, size_t n, uint8_t *out, size_t outLen) {
+/// bitCount opt
+size_t decoderSplitReceive(const uint8_t *src, size_t n, uint8_t *out, size_t outLen) {
     size_t entryLengths[DICT_LENGTH];
     size_t prefixStart[DICT_LENGTH]; // first string char in output
-    uint8_t lastSymbol[DICT_LENGTH]; // last symbol of entry
     // init dict
     for (int i = 0; i < DICT_LENGTH; i++) {
         entryLengths[i] = 0;
         if (i < 256) {
             prefixStart[i] = 0;
-            lastSymbol[i] = static_cast<char>(i);
             entryLengths[i] = 1;
         }
     }
@@ -48,55 +44,42 @@ size_t decoder3(const uint8_t *src, size_t n, uint8_t *out, size_t outLen) {
         cntCode = readCodeFast(src, bitsRead, codeLen);
         bitsRead += codeLen;
         if (cntCode < 256) {
+
             out[outputIndex] = static_cast<uint8_t>(cntCode);
             prefixStart[cntCode] = outputIndex; // update last pos
             outputIndex++;
-
             if (oldCode != static_cast<uint16_t>(-1)) {
                 entryLengths[newCode] = entryLengths[oldCode] + 1;
-                prefixStart[newCode] = prefixStart[oldCode];
-                lastSymbol[newCode] = out[prefixStart[cntCode]];
-                codeLen = getBitLen(newCode + 2);
+                prefixStart[newCode] = outputIndex - entryLengths[newCode];
                 newCode++;
+                codeLen += (newCode + 1) >> codeLen;
             }
             oldCode = cntCode;
         } else if (cntCode > 257) {
             if (entryLengths[cntCode] > 0) {
                 // met this entry
-                size_t iterations = std::min(entryLengths[cntCode] - 1, outLen - outputIndex - 1);
+                size_t iterations = std::min(entryLengths[cntCode], outLen - outputIndex);
                 for (int i = 0; i < iterations; i++) {
                     out[outputIndex + i] = out[prefixStart[cntCode] + i];
                 }
-                if (outputIndex + iterations < outLen) { // not boundary
-                    out[outputIndex + iterations] = lastSymbol[cntCode];
-                    iterations++;
-                }
                 prefixStart[cntCode] = outputIndex; // update last pos
-                outputIndex += iterations;
 
-                // if (oldCode != static_cast<uint16_t>(-1)) { impossible for new codes
                 entryLengths[newCode] = entryLengths[oldCode] + 1;
-                prefixStart[newCode] = prefixStart[oldCode];
-                lastSymbol[newCode] = out[prefixStart[cntCode]];
-                codeLen = getBitLen(newCode + 2);
+                prefixStart[newCode] = outputIndex - entryLengths[oldCode];
+                outputIndex += iterations;
                 newCode++;
-                // }
+                codeLen += (newCode + 1) >> codeLen;
             } else {
                 entryLengths[newCode] = entryLengths[oldCode] + 1;
-                prefixStart[newCode] = prefixStart[oldCode];
-                lastSymbol[newCode] = out[prefixStart[oldCode]];
+                prefixStart[newCode] = outputIndex - entryLengths[oldCode];
 
-                size_t iterations = std::min(entryLengths[newCode] - 1, outLen - outputIndex - 1);
+                size_t iterations = std::min(entryLengths[newCode], outLen - outputIndex);
                 for (int i = 0; i < iterations; i++) {
                     out[outputIndex + i] = out[prefixStart[newCode] + i];
                 }
-                if (outputIndex + iterations < outLen) {
-                    out[outputIndex + iterations] = lastSymbol[newCode];
-                    iterations++;
-                }
                 outputIndex += iterations;
-                codeLen = getBitLen(newCode + 2);
                 newCode++;
+                codeLen += (newCode + 1) >> codeLen;
             }
             oldCode = cntCode;
         } else if (cntCode == CLEAR_CODE) {
