@@ -34,4 +34,6 @@ newDecoder(FullFastWrite);
 
 newDecoder(InlineAll);
 
+newDecoder(FinalC);
+
 #endif //LZW_TIFF_DECODER_LZW_DECODERS_H

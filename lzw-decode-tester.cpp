@@ -162,10 +162,11 @@ int main() {
 //    addRunner("remove lastSymbol", decoder8);
 //    addRunner("split read", decoderSplitReceive);
 //    addRunner("fast write", decoderFastWrite);
-    addRunner("no clean", decoderNoClean);
-    addRunner("reduce if", decoderPullFromIfs);
+//    addRunner("no clean", decoderNoClean);
+//    addRunner("reduce if", decoderPullFromIfs);
     addRunner("full fast copy", decoderFullFastWrite);
     addRunner("inline all", decoderInlineAll);
+    addRunner("for -> do while", decoderFinalC);
 
     auto result = run_all(runners, tests);
 
