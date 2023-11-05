@@ -20,14 +20,18 @@ newDecoder(3);
 
 newDecoder(4);
 
-newDecoder(5);
-
-newDecoder(6);
-
-newDecoder(7);
-
 newDecoder(8);
 
 newDecoder(SplitReceive);
+
+newDecoder(FastWrite);
+
+newDecoder(NoClean);
+
+newDecoder(PullFromIfs);
+
+newDecoder(FullFastWrite);
+
+newDecoder(InlineAll);
 
 #endif //LZW_TIFF_DECODER_LZW_DECODERS_H

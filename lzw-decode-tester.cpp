@@ -159,8 +159,13 @@ int main() {
 //    addRunner("fast code recieve", decoder2);
 //    addRunner("if reorder", decoder3);
 //    addRunner("fast clz", decoder4);
-    addRunner("remove lastSymbol", decoder8);
-    addRunner("split read", decoderSplitReceive);
+//    addRunner("remove lastSymbol", decoder8);
+//    addRunner("split read", decoderSplitReceive);
+//    addRunner("fast write", decoderFastWrite);
+    addRunner("no clean", decoderNoClean);
+    addRunner("reduce if", decoderPullFromIfs);
+    addRunner("full fast copy", decoderFullFastWrite);
+    addRunner("inline all", decoderInlineAll);
 
     auto result = run_all(runners, tests);
 

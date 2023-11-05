@@ -3,7 +3,6 @@
 
 static inline uint16_t readCodeFast(const uint8_t *data, size_t bitsRead, int codeLen) {
     size_t needBytes = (bitsRead + codeLen) / 8 - bitsRead / 8 + 1; // 2 or 3
-    // TODO: try splitting on two cases
     // TODO: or BMI check
     size_t pos = bitsRead / 8;
     uint32_t result = 0;

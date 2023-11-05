@@ -13,10 +13,12 @@ add_executable(lzw_tiff_decoder lzw-decode-tester.cpp
         decoders/decoder3.cpp
         decoders/decoder4.cpp
         decoders/decoder8.cpp
-        decoders/decoder5.cpp
-        decoders/decoder6.cpp
-        decoders/decoder7.cpp
         decoders/decoderSplitReceive.cpp
+        decoders/decoderFastWrite.cpp
+        decoders/decoderNoClean.cpp
+        decoders/decoderPullFromIfs.cpp
+        decoders/decoderFullFastWrite.cpp
+        decoders/decoderInlineAll.cpp
 )
 add_executable(lzw_encode lzw-encode.cpp)
 
