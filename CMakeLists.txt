@@ -3,6 +3,9 @@ project(lzw_tiff_decoder C CXX)
 
 set(CMAKE_C_STANDARD 11)
 
+link_libraries(-m32)
+add_compile_options(-m32)
+
 add_executable(lzw_tiff_decoder lzw-decode-tester.cpp
         decoders/lzw-decoders.h
         decoders/decoderBasic.cpp
