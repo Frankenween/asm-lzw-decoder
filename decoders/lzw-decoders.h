@@ -14,26 +14,28 @@ newDecoder(Basic);
 
 newDecoder(1);
 
-newDecoder(2);
-
-newDecoder(3);
-
-newDecoder(4);
-
 newDecoder(8);
 
-newDecoder(SplitReceive);
-
-newDecoder(FastWrite);
-
-newDecoder(NoClean);
-
-newDecoder(PullFromIfs);
+newDecoder(FinalC);
 
 newDecoder(FullFastWrite);
 
 newDecoder(InlineAll);
 
-newDecoder(FinalC);
+extern "C" {
+newDecoder(Asm1);
+newDecoder(Asm4);
+newDecoder(AsmFullRegisters);
+newDecoder(AsmPerf);
+newDecoder(NoChecks);
+newDecoder(AsmMMX);
+newDecoder(NoBranch);
+newDecoder(AsmReorder);
+newDecoder(FastCopy1);
+newDecoder(UpdNoCond);
+
+size_t __attribute__((noinline)) lzw_decode(const uint8_t *src, size_t n, uint8_t *out, size_t outLen);
+size_t __attribute__((noinline)) lzw_decode_bufout(const uint8_t *src, size_t n, uint8_t *out, size_t outLen);
+}
 
 #endif //LZW_TIFF_DECODER_LZW_DECODERS_H

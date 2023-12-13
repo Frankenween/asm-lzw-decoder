@@ -21,7 +21,7 @@ size_t decoderInlineAll(const uint8_t *src, size_t n, uint8_t *out, size_t outLe
 
     uint32_t cntCode;
     uint16_t oldCode = -1;
-    while ((bitsRead + codeLen) < n * 8 && outputIndex < outLen) {
+    while ((bitsRead + codeLen) < n * 8 && outputIndex <= outLen) {
         // read next code
         size_t needBytes = (bitsRead + codeLen) / 8 - bitsRead / 8 + 1; // 2 or 3
         size_t pos = bitsRead / 8;
@@ -42,7 +42,9 @@ size_t decoderInlineAll(const uint8_t *src, size_t n, uint8_t *out, size_t outLe
         // No need to calculate mask. Can or with code during update
         cntCode >>= lowTrashBits;
         cntCode &= (1 << codeLen) - 1;
-
+        if (outputIndex == outLen && (cntCode != EOI_CODE && cntCode != CLEAR_CODE)) {
+            return -1;
+        }
         bitsRead += codeLen;
         if (cntCode < 256) {
             out[outputIndex] = static_cast<uint8_t>(cntCode);

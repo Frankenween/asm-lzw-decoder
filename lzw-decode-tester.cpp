@@ -6,10 +6,14 @@
 
 using namespace std;
 
-using lzw_decoder = size_t(*)(const uint8_t*, size_t, uint8_t*, size_t);
+using lzw_decoder = size_t(*)(const uint8_t*, size_t, uint8_t* restrict, size_t);
 
-//typedef size_t(*lzw_decoder)(const uint8_t*, size_t, uint8_t*, size_t);
+// For running decoder, which can get out of bounds
+#ifndef BUFF_EXTEND
+#define BUFF_EXTEND 0
+#endif
 
+// Can be replaced with intrinsic
 static inline uint64_t rdtscp() {
     uint32_t hi, lo;
     __asm__ __volatile__ ("rdtscp" : "=a"(lo), "=d"(hi) : : "ecx");
@@ -23,6 +27,7 @@ struct test {
         while (in.get(c)) {
             data.push_back(static_cast<uint8_t>(c));
         }
+        data.reserve(data.size() + BUFF_EXTEND);
         ifstream out(outputName, ios::binary);
         while (out.get(c)) {
             answer.push_back(static_cast<uint8_t>(c));
@@ -75,16 +80,20 @@ private:
 };
 
 // Get time(in some way) or -1, if test failed
-uint64_t run_test(lzw_decoder dec, const test &cntTest) {
+uint64_t run_test(lzw_decoder dec, const test &cntTest, bool check = false) {
     size_t ansLen = cntTest.getAnswerLen();
     // Add one guard element to detect overflow
-    vector<uint8_t> outputData(ansLen + 1);
+    vector<uint8_t> outputData;
+    outputData.reserve(ansLen + BUFF_EXTEND);
+    outputData.resize(ansLen);
 
     uint64_t t1 = rdtscp();
     size_t wrote = dec(cntTest.getEncodedData(), cntTest.getEncodedSize(),
-                           outputData.data(), outputData.size());
+                       outputData.data(), outputData.size());
     uint64_t t2 = rdtscp();
-
+    if (!check) {
+        return t2 - t1;
+    }
     if (wrote == static_cast<size_t>(-1)) {
         return -1;
     }
@@ -96,7 +105,7 @@ uint64_t run_test(lzw_decoder dec, const test &cntTest) {
     }
 }
 
-vector<vector<uint64_t>> run_all(const vector<lzw_decoder> &runners, const vector<test> &tests, uint64_t samples = 7) {
+vector<vector<uint64_t>> run_all(const vector<lzw_decoder> &runners, const vector<test> &tests, uint64_t samples = 30) {
     vector<vector<uint64_t>> results;
     int i = 0;
     for (auto runner : runners) {
@@ -106,19 +115,17 @@ vector<vector<uint64_t>> run_all(const vector<lzw_decoder> &runners, const vecto
         int j = 0;
         for (auto &t : tests) {
             j++;
-            for (int warmup = 0; warmup < 2; warmup++) {
-                run_test(runner, t);
+            if (run_test(runner, t, true) == static_cast<uint64_t>(-1)) {
+                results.back().push_back(-1);
+                cerr << "Test " << j << " finished" << endl;
+                continue;
             }
             uint64_t sum = 0;
             for (int run = 0; run < samples; run++) {
                 auto res = run_test(runner, t);
-                if (res == static_cast<uint64_t>(-1)) {
-                    sum = res;
-                    break;
-                }
                 sum += res;
             }
-            results.back().push_back(sum == ~0ULL ? -1 : (sum / samples));
+            results.back().push_back(sum / samples);
             cerr << "Test " << j << " finished" << endl;
         }
     }
@@ -139,34 +146,32 @@ int main() {
 
     function<void(const string&, lzw_decoder)> addRunner =
             [&runners, &runnerNames](const string &name, lzw_decoder runner) {
-        runners.push_back(runner);
-        runnerNames.push_back(name);
-    };
+                runners.push_back(runner);
+                runnerNames.push_back(name);
+            };
 
     addTest("empty");
     addTest("new-line");
     addTest("single-char");
-    addTest("1");
-    addTest("2");
     addTest("3");
+    addTest("2");
+    addTest("1");
     addTest("4");
     addTest("big-pnm");
     addTest("shell32.dll");
     addTest("big-a");
 
-//    addRunner("basic", decoderBasic);
-//    addRunner("reuse entry", decoder1);
-//    addRunner("fast code recieve", decoder2);
-//    addRunner("if reorder", decoder3);
-//    addRunner("fast clz", decoder4);
-//    addRunner("remove lastSymbol", decoder8);
-//    addRunner("split read", decoderSplitReceive);
-//    addRunner("fast write", decoderFastWrite);
-//    addRunner("no clean", decoderNoClean);
-//    addRunner("reduce if", decoderPullFromIfs);
-    addRunner("full fast copy", decoderFullFastWrite);
-    addRunner("inline all", decoderInlineAll);
-    addRunner("for -> do while", decoderFinalC);
+    addRunner("intermediate working C code", decoderFinalC);
+    addRunner("fast write C code", decoderFullFastWrite);
+    addRunner("inline calls C code", decoderInlineAll);
+    addRunner("ASM version 1", decoderAsm1);
+    addRunner("no branch", decoderNoBranch);
+    addRunner("sse copy", decoderFastCopy1);
+    addRunner("final version", lzw_decode);
+
+#if BUFF_EXTEND != 0
+    addRunner("no checks bound", lzw_decode_bufout);
+#endif
 
     auto result = run_all(runners, tests);
 

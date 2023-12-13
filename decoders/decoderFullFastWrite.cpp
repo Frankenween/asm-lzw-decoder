@@ -58,9 +58,12 @@ size_t decoderFullFastWrite(const uint8_t *src, size_t n, uint8_t *out, size_t o
     size_t bitsRead = 0;
 
     uint16_t cntCode, oldCode = -1;
-    while ((bitsRead + codeLen) < n * 8 && outputIndex < outLen) {
+    while ((bitsRead + codeLen) < n * 8 && outputIndex <= outLen) {
         cntCode = readCodeFast(src, bitsRead, codeLen);
         bitsRead += codeLen;
+        if (outputIndex == outLen && (cntCode != EOI_CODE && cntCode != CLEAR_CODE)) {
+            return -1;
+        }
         if (cntCode < 256) {
             out[outputIndex] = static_cast<uint8_t>(cntCode);
             prefixStart[cntCode] = outputIndex; // update last pos

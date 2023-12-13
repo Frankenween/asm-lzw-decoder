@@ -4,8 +4,11 @@
 /// transform all loops to do-while/while
 /// n >= 2, outLen > 0
 size_t decoderFinalC(const uint8_t *src, size_t n, uint8_t *out, size_t outLen) {
+    /// dst - edi
+    /// src - esi
     size_t entryLengths[DICT_LENGTH];
     size_t prefixStart[DICT_LENGTH]; // first string char in output
+    /// ST_TOP here
     // init dict
     {
         int i = 0;
@@ -18,23 +21,19 @@ size_t decoderFinalC(const uint8_t *src, size_t n, uint8_t *out, size_t outLen) 
             i++;
         } while (i < DICT_LENGTH);
     }
-    uint16_t newCode = 258;
-    bool done = false;
-    size_t outputIndex = 0;
-    int codeLen = 9;
-    size_t bitsRead = 0;
+    uint16_t newCode = 258; /// dx
+    size_t outputIndex = 0; /// ebp
+    int codeLen = 9; /// on stack [ST_TOP - 8]
+    size_t bitsRead = 0; /// on stack [ST_TOP - 4]
 
-    uint32_t cntCode;
-    uint16_t oldCode = -1;
+    uint32_t cntCode; /// eax
+    uint16_t oldCode = -1; /// edx >> 16
     do {
         // read next code
-        uint8_t readPref = bitsRead & 7;
-        uint8_t needBits = readPref + codeLen + 7; // 2 or 3
-        //uint8_t needBytes = needBytesArr[readPref][codeLen];
-        size_t pos = bitsRead >> 3;
+        size_t pos = bitsRead >> 3; /// ecx
         cntCode = 0;
-        uint8_t lowTrashBits = 2;
-        if (needBits <= 16) {
+        uint16_t bxVal = (bitsRead & 7) + codeLen + 7; /// bh
+        if (bxVal <= 16) {
             // load big-endian
             // xchg but keep cntCode in clever place
 //            cntCode = *((uint16_t*)(src + pos));
@@ -48,6 +47,7 @@ size_t decoderFinalC(const uint8_t *src, size_t n, uint8_t *out, size_t outLen) 
         } else {
             // if pos + 3 < n, can read big-endian uint32_t
             // otherwise: unlikely run this code
+            /// here add pos + 3 and cmp
             if (pos + 3 < n) { // likely!
                 cntCode = *((uint32_t*)(src + pos));
                 __asm__ (
@@ -55,24 +55,27 @@ size_t decoderFinalC(const uint8_t *src, size_t n, uint8_t *out, size_t outLen) 
                         : "=r"(cntCode)
                         : "r"(cntCode)
                         );
-                lowTrashBits++;
+                bxVal -= 8;
             } else {
                 cntCode |= src[pos] << 16;
                 cntCode |= src[pos + 1] << 8;
                 cntCode |= src[pos + 2];
             }
-            lowTrashBits++;
+            bxVal -= 8;
         }
-        lowTrashBits = 8 * lowTrashBits - needBits + 7; // 2 regs for lea
+        bxVal = 23 - bxVal;
         // PEXT with (1 << codeLen) - 1
         // No need to calculate mask. Can or with code during update
-        cntCode >>= lowTrashBits;
+        cntCode >>= bxVal;
         cntCode &= (1 << codeLen) - 1;
 
         bitsRead += codeLen;
+        if (outputIndex == outLen && (cntCode != EOI_CODE && cntCode != CLEAR_CODE)) {
+            return -1;
+        }
         if (cntCode < 256) {
             out[outputIndex] = static_cast<uint8_t>(cntCode);
-            prefixStart[cntCode] = outputIndex; // update last pos
+            //prefixStart[cntCode] = outputIndex; // update last pos
             outputIndex++;
             if (oldCode != static_cast<uint16_t>(-1)) {
                 entryLengths[newCode] = entryLengths[oldCode] + 1;
@@ -86,23 +89,19 @@ size_t decoderFinalC(const uint8_t *src, size_t n, uint8_t *out, size_t outLen) 
             prefixStart[newCode] = outputIndex - entryLengths[oldCode];
 
             size_t rest = outLen - outputIndex;
-            size_t iterations;
+            size_t iterations; // ecx
             uint8_t *baseWrite = out + outputIndex;
-            uint8_t *baseRead;
-            if (cntCode < newCode) {
-                // met this entry
-                iterations = std::min(entryLengths[cntCode], rest);
-                baseRead = out + prefixStart[cntCode];
-                prefixStart[cntCode] = outputIndex; // update last pos
-            } else {
-                if (cntCode > newCode) {
-                    return -1; // wrong code
-                }
-                iterations = std::min(entryLengths[newCode], rest) - 1;
-                out[outputIndex] = out[prefixStart[newCode]];
-                baseRead = out + prefixStart[newCode] + 1;
-                outputIndex++;
-                baseWrite++;
+            uint8_t *baseRead; // ebx
+            iterations = std::min(entryLengths[cntCode], rest);
+            baseRead = out + prefixStart[cntCode];
+
+            iterations--;
+            out[outputIndex] = out[prefixStart[cntCode]];
+            baseRead++;
+            outputIndex++;
+            baseWrite++;
+            if (cntCode > newCode) {
+                return -1; // wrong code
             }
             if (iterations >= 4) {
                 size_t i = 0;
@@ -133,12 +132,9 @@ size_t decoderFinalC(const uint8_t *src, size_t n, uint8_t *out, size_t outLen) 
             oldCode = -1;
             newCode = 258;
         } else {
-            done = true;
-            break;
+            return outputIndex;
+            // ret
         }
-    } while ((bitsRead + codeLen) < n * 8 && outputIndex < outLen);
-    if (!done) {
-        return -1;
-    }
-    return outputIndex;
+    } while ((bitsRead + codeLen) < n * 8 && outputIndex <= outLen); // if failed - decoding failed
+    return -1;
 }
